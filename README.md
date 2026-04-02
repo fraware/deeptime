@@ -1,178 +1,256 @@
+<div align="center">
+
 # DeepTime
 
-Welcome to the DeepTime, the Granite TimeSeries Forecasting Tool – an interactive, lightweight forecasting platform based on IBM’s Granite-TimeSeries-TTM model family. This repository contains code for zero-shot forecasting, few-shot fine-tuning (including channel-mix finetuning), and M4 hourly evaluation experiments. The tool is fully containerized and deployable on Hugging Face Spaces, GitHub, or your preferred cloud environment.
+**Interactive forecasting on your time series—powered by IBM Granite.**
 
+[![Python](https://img.shields.io/badge/python-3.11%2B-3776AB?style=flat&logo=python&logoColor=white)](https://www.python.org/)
+[![License](https://img.shields.io/badge/license-Apache%202.0-2E7D32?style=flat)](LICENSE)
+[![Streamlit](https://img.shields.io/badge/app-Streamlit-FF4B4B?style=flat&logo=streamlit&logoColor=white)](https://streamlit.io)
+[![CI](https://img.shields.io/github/actions/workflow/status/fraware/deeptime/ci.yml?branch=main&label=CI&logo=githubactions&logoColor=white)](https://github.com/fraware/deeptime/actions)
 
-<p align="center" width="100%">
-<img src="assets/dashboard image new.png" width="600">
-</p>
+<br />
 
+<img src="assets/dashboard-preview.svg" width="640" alt="DeepTime — Granite time-series forecasting dashboard preview">
 
+<br />
 
-## Table of Contents
+[Features](#what-you-can-do) · [Quick start](#quick-start) · [Docker](#docker) · [Docs](#repository-map) · [Contributing](CONTRIBUTING.md)
 
-- [Overview](#overview)
-- [Features](#features)
-- [Installation](#installation)
-  - [Local Setup](#local-setup)
-  - [Docker Deployment](#docker-deployment)
-  - [Deploying on Hugging Face Spaces](#deploying-on-hugging-face-spaces)
-- [Usage](#usage)
-  - [Launching the App](#launching-the-app)
-  - [Interactive Modes](#interactive-modes)
-- [Data Preparation](#data-preparation)
-- [Setting Parameters](#setting-parameters)
-- [Interpreting Results](#interpreting-results)
-- [Example Notebooks & Code Snippets](#example-notebooks--code-snippets)
-- [Contributing](#contributing)
-- [License](#license)
+</div>
 
-## Overview
+---
 
-The Granite TimeSeries Forecasting Tool is an end-to-end solution for time-series forecasting. It leverages tiny pre-trained models (TTMs) for efficient forecasting with both zero-shot and few-shot learning strategies. The tool can:
+DeepTime is a **browser-based dashboard** for experimenting with **IBM Granite** time-series models. Upload a CSV or use built-in samples, then run **zero-shot** inference, a **channel-mix fine-tuning** walkthrough, or an **M4 hourly** benchmark—all without writing a training script first.
 
-- Process various time-series datasets.
-- Support exogenous/control variables and static categorical features.
-- Run advanced experiments such as channel-mix finetuning and rolling forecasts.
-- Provide interactive visualizations to inspect predictions.
+Under the hood, the app uses **[granite-tsfm](https://github.com/ibm-granite/granite-tsfm)** and **Tiny Time Mixer (TTM)** weights from **[Hugging Face](https://huggingface.co/ibm-granite)**. When you need a longer horizon than the model’s native output length, optional **recursive extension** follows IBM’s [`RecursivePredictor`](https://github.com/ibm-granite/granite-tsfm/blob/main/tsfm_public/toolkit/recursive_predictor.py) pattern ([rolling prediction notebook](https://github.com/ibm-granite/granite-tsfm/blob/main/notebooks/hfdemo/ttm_rolling_prediction_getting_started.ipynb)).
 
-## Features
+---
 
-- **Zero-shot Evaluation:** Directly apply the pre-trained model on your data.
-- **Few-shot Finetuning:** Fine-tune the pre-trained model with a small fraction of your data.
-- **Channel-Mix Finetuning:** Leverage conditional (exogenous) features for enhanced performance.
-- **M4 Hourly Example:** Replicate experiments on the M4 hourly dataset.
-- **Interactive Dashboard:** Use Streamlit to upload data, set parameters, and view interactive results.
-- **Dockerized Deployment:** Easily deploy the app via Docker, GitHub, or Hugging Face Spaces.
+## Table of contents
 
-## Installation
+- **Overview:** [What you can do](#what-you-can-do) · [Repository map](#repository-map) · [Architecture](#architecture)
+- **Run:** [Quick start](#quick-start) · [Where to run](#where-to-run) · [Docker](#docker) · [Hugging Face Spaces](#hugging-face-spaces)
+- **Use:** [Modes in the app](#modes-in-the-app) · [Parameters](#parameters) · [Data format](#data-format) · [Reading results](#reading-results)
+- **Develop:** [Development & CI](#development--ci) · [Contributing](CONTRIBUTING.md) · [License](#license)
 
-### Local Setup
+---
 
-1. **Clone the Repository:**
+## What you can do
 
-   ```bash
-   git clone https://github.com/your_username/granite-forecasting-tool.git
-   cd granite-forecasting-tool
+| Capability | What it means |
+|-------------|----------------|
+| **Zero-shot forecasting** | Load ETTh1 by default or your own CSV; evaluate a pretrained TTM without training. |
+| **Smart timestamps** | On upload, pick among detected date/time columns; values are parsed and checked for sensible ordering. |
+| **Longer horizons** | Add “rolling” steps to chain predictions; the UI notes that errors can accumulate. |
+| **Channel-mix demo** | Fine-tune on bike-sharing data with a frozen backbone (see reproducibility note in the app). |
+| **M4 hourly** | Pull the official wide-format training file, expand one series to long form, run **TTM v1**; optional offline fixture for smoke tests. |
+| **Production-minded packaging** | Docker (Python 3.12, non-root, health check), CI on 3.11/3.12, Ruff, pytest, Dependabot. |
 
-   ```
+---
 
-2. **Install Dependencies:**
+## Repository map
 
-We recommend using a virtual environment. Then run:
+| Location | Role |
+|----------|------|
+| [`granite-forecasting-tool/`](granite-forecasting-tool/) | **Application home** — `app.py`, dependencies, Docker, tests |
+| [`granite_forecasting/`](granite-forecasting-tool/granite_forecasting/) | **Python package** — data I/O, modes, plots, recursive forecasting |
+| [`tests/`](granite-forecasting-tool/tests/) | Pytest + [`fixtures`](granite-forecasting-tool/tests/fixtures/) |
+| [`.github/`](.github/) | Workflows and Dependabot |
+| [`assets/`](assets/) | README artwork (SVG preview) |
 
-```bash
-pip install -r requirements.txt
+A more detailed file-level index lives in [`granite-forecasting-tool/README.md`](granite-forecasting-tool/README.md).
+
+---
+
+## Architecture
+
+```mermaid
+flowchart LR
+  subgraph ui [UI]
+    ST[Streamlit app]
+  end
+  subgraph pkg [Package]
+    Z[zero_shot]
+    CM[channel_mix]
+    M4[m4_hourly]
+    D[data_io]
+    R[rolling]
+    P[plots]
+  end
+  subgraph ext [External]
+    HF[HuggingFace models]
+    TSFM[granite-tsfm]
+  end
+  ST --> Z
+  ST --> CM
+  ST --> M4
+  Z --> D
+  Z --> R
+  Z --> P
+  M4 --> D
+  Z --> TSFM
+  CM --> TSFM
+  M4 --> TSFM
+  TSFM --> HF
 ```
 
-3. **Run the Application:**
+---
 
-Launch the Streamlit dashboard with:
+## Where to run
+
+| Environment | Command or entry | Notes |
+|-------------|------------------|--------|
+| **This machine** | `streamlit run app.py` inside [`granite-forecasting-tool/`](granite-forecasting-tool/) | Python **3.11+**. First runs download model weights. |
+| **Docker** | Build from repo root (see [Docker](#docker)) | Same UI on port **8501**. |
+| **Hugging Face Spaces** | Docker Space, context **`granite-forecasting-tool`** | Sometimes needs XSRF disabled at build time; Hub token in Space secrets if required. |
+| **Your cloud** | Any OCI image from the Dockerfile | Prefer TLS + reverse proxy; keep XSRF on unless the platform forces it off. |
+
+> **Footprint:** Evaluation modes need enough RAM and disk for PyTorch and checkpoints. **Channel-mix training** is the most demanding. GPU helps; CPU is fine for smaller batches.
+
+---
+
+## Quick start
 
 ```bash
+git clone https://github.com/fraware/deeptime.git
+cd deeptime/granite-forecasting-tool
+
+python -m venv .venv
+# Windows:    .venv\Scripts\activate
+# Unix/macOS: source .venv/bin/activate
+
+pip install --upgrade pip
+pip install -r requirements.txt
+# Developers: pip install -e ".[dev]"
+
 streamlit run app.py
 ```
 
-### Docker Deployment
+Open **http://localhost:8501**.
 
-To build and run the Docker container locally:
+`granite-tsfm` is pinned to a **specific Git revision** in [`pyproject.toml`](granite-forecasting-tool/pyproject.toml) and [`requirements.txt`](granite-forecasting-tool/requirements.txt) so upgrades stay intentional.
 
-1. **Build the Docker Image:**
+<details>
+<summary><strong>Optional — Hugging Face Hub authentication</strong></summary>
 
-   ```bash
-   docker build -t forecasting-app .
+If downloads are rate-limited or gated, use a **read** token and never commit it.
 
-   ```
+- **Streamlit:** copy [`granite-forecasting-tool/.streamlit/secrets.toml.example`](granite-forecasting-tool/.streamlit/secrets.toml.example) to `secrets.toml` beside it and set `HF_TOKEN` (use `st.secrets` in code where you need it).
+- **Environment:** `HF_TOKEN` or `HUGGING_FACE_HUB_TOKEN` per [huggingface_hub](https://huggingface.co/docs/huggingface_hub/package_reference/environment_variables).
 
-2. **Run the Container:**
+</details>
 
-   ```bash
-   docker run -p 8501:8501 forecasting-app
-   ```
+---
 
-Then open your browser and navigate to http://localhost:8501.
+## Docker
 
-## Usage
+From the **repository root**:
 
-### Launching the App
-
-Once running, the app provides an interactive interface where you can:
-
-- Choose between different evaluation modes:
-  - **Zero-shot Evaluation**
-  - **Channel-Mix Finetuning Example**
-  - **M4 Hourly Example**
-- Upload your CSV file (or use the default ETTh1 dataset).
-- Select target columns, exogenous/control variables, and adjust advanced options (e.g., rolling forecast extension).
-
-### Interactive Modes
-
-**Zero-shot Evaluation**
-
-- **Data Upload:** Upload your time-series CSV file. The file must include a date column.
-- **Parameter Setting:**
-  - Set context and prediction lengths.
-  - Select target columns and optionally exogenous/control columns.
-  - Choose a forecast index for dynamic plotting.
-- **Run Evaluation:** Click “Run Zero-shot Evaluation” to view evaluation metrics and interactive plots.
-
-**Channel-Mix Finetuning Example**
-
-- This mode demonstrates how to fine-tune the model using channel-mix finetuning on a bike-sharing dataset.
-- The tool automatically loads the dataset, sets up the conditional features, freezes the model backbone, and then fine-tunes the model.
-- Evaluation metrics and static plots are provided after fine-tuning.
-
-**M4 Hourly Example**
-
-- This mode reproduces experiments on the M4 hourly dataset.
-- The tool loads a sample M4 dataset (or a placeholder), evaluates the model in zero-shot mode, and displays results.
-- Fine-tuning on M4 can be integrated similarly.
-
-### Data Preparation
-
-Your data must meet the following requirements:
-
-- **CSV Format:** Data should be in CSV format.
-- **Timestamp Column:** The CSV must include a column named date (or similar) that is parseable as a date.
-- **Target Columns:** These columns contain the time-series values you wish to forecast.
-- **Optional Exogenous/Control Variables:** Additional columns used for conditional features.
-- **Optional Static Categorical Features:** Columns that represent static characteristics of the time series.
-
-#### Example Data Format
-
-```csv
-date,HUFL,HULL,MUFL,MULL,LUFL,LULL,OT,exog1,exog2
-2020-01-01 00:00,100,120,130,140,150,160,170,0.5,low
-2020-01-01 01:00,110,125,135,145,155,165,175,0.6,medium
-...
-
+```bash
+docker build -f granite-forecasting-tool/Dockerfile -t deeptime-forecast granite-forecasting-tool
+docker run --rm -p 8501:8501 deeptime-forecast
 ```
 
-### Setting Parameters
+Then open **http://localhost:8501**.
 
-The following parameters are available for configuration through the dashboard:
+<details>
+<summary><strong>Build-time XSRF toggle</strong> (some hosts, e.g. certain Spaces setups)</summary>
 
-- **Context Length:** Number of past time points used as input.
-- **Prediction Length:** Number of future time points to forecast.
-- **Batch Size:** Batch size used during model evaluation or fine-tuning.
-- **Rolling Forecast Extension:** Additional steps for rolling forecasts.
-- **Exogenous/Control Variables:** Choose additional columns to be used as conditional features.
-- **Static Categorical Features:** (If implemented) Select static features.
-- **Evaluation Mode:** Select between zero-shot, channel-mix finetuning, or M4 hourly examples.
+```bash
+docker build -f granite-forecasting-tool/Dockerfile \
+  --build-arg STREAMLIT_ENABLE_XSRF=false \
+  -t deeptime-forecast granite-forecasting-tool
+```
 
-### Interpreting Results
+The image sets `STREAMLIT_SERVER_ENABLE_XSRF_PROTECTION` from `STREAMLIT_ENABLE_XSRF` (default **true**). The build needs **git** because `granite-tsfm` installs from Git.
 
-After running an evaluation, you will see:
+</details>
 
-- **Evaluation Metrics:** Metrics such as MSE, MAE, and others, displayed in JSON format.
-- **Interactive Plot:** A Plotly chart overlays actual values with the forecast for a selected index. You can zoom, pan, and hover over the chart for detailed information.
-- **Static Plots:** Additional static plots (PNG images) are generated and displayed below the interactive plot.
-- **Console Logs:** For advanced users, additional logs and printed outputs (e.g., parameter counts) are shown in the terminal or Streamlit’s log panel.
+---
+
+## Hugging Face Spaces
+
+1. Create a **Docker** Space linked to this repo.
+2. Set the build **context** to **`granite-forecasting-tool`** so `Dockerfile` and `requirements.txt` resolve.
+3. If the UI fails behind the proxy, rebuild with `STREAMLIT_ENABLE_XSRF=false` (see Docker section).
+4. Add **`HF_TOKEN`** / **`HUGGING_FACE_HUB_TOKEN`** as a Space secret if Hub access fails.
+
+---
+
+## Modes in the app
+
+### Zero-shot
+
+Choose the default **ETTh1** stream or **upload a CSV**. For uploads, select the **timestamp** column, **targets**, and optional **control** columns. Use **rolling extension** for horizons beyond one native prediction block; the **forecast index** slider picks which test window to plot.
+
+### Channel-mix
+
+Single action: loads data from [`BIKE_SHARING_CSV_URL`](granite-forecasting-tool/granite_forecasting/config.py), trains with backbone frozen. Third-party URLs can drift—snapshot the CSV if you need a frozen benchmark.
+
+### M4 hourly
+
+Select a **row** in the official wide **Hourly-train.csv**; the app reshapes it to `date` + `target` and runs **TTM v1**. Enable the **fixture** checkbox to use `tests/fixtures/m4_hourly_sample.csv` without network access.
+
+---
+
+## Parameters
+
+| Control | Mode | Role |
+|---------|------|------|
+| Context length | Zero-shot | History length (default **512**). |
+| Prediction length | Zero-shot | Points per native forward pass (default **96**). |
+| Batch size | Zero-shot | Eval batch size. |
+| Rolling extension | Zero-shot | Extra recursive steps after the native horizon. |
+| Forecast index | Zero-shot | Which test example drives plots. |
+| Series row index | M4 | Which wide-format row to expand. |
+
+---
+
+## Data format
+
+- **File:** CSV.
+- **Time:** Any parseable column on upload; ETTh1 sample uses **`date`**.
+- **Targets:** One or more numeric columns.
+- **Controls:** Optional exogenous columns where the preprocessor supports them.
+
+```csv
+date,HUFL,HULL,MUFL,MULL,LUFL,LULL,OT,exog1
+2020-01-01 00:00,100,120,130,140,150,160,170,0.5
+```
+
+---
+
+## Reading results
+
+| Output | Meaning |
+|--------|---------|
+| **Metrics JSON** | `Trainer.evaluate` on the held-out split (exact keys depend on model/config). |
+| **Plotly** | Interactive actual vs forecast; with rolling, also baseline vs full recursive path. |
+| **PNG files** | Saved under `dashboard_outputs/` by TSFM helpers and surfaced in the UI. |
+| **Console** | Warnings are not blanket-suppressed; see a narrow PyTree `FutureWarning` filter in [`config.py`](granite-forecasting-tool/granite_forecasting/config.py). |
+
+---
+
+## Development & CI
+
+| Step | Command / file |
+|------|----------------|
+| Lint | `ruff check .` in `granite-forecasting-tool/` |
+| Test | `pytest` |
+| Pipeline | [`.github/workflows/ci.yml`](.github/workflows/ci.yml) — Python **3.11** & **3.12**, Ruff, pytest, `docker build` |
+| Hooks | [`.pre-commit-config.yaml`](.pre-commit-config.yaml) (optional) |
+
+For tighter supply-chain pinning than the fixed `granite-tsfm` commit, consider **`uv lock`** or **`pip-tools`** on top of the existing manifests.
+
+---
 
 ## Contributing
 
-We welcome contributions! Please review our CONTRIBUTING.md file for details on our code of conduct and the process for submitting pull requests.
+Guidelines, fork workflow, and CI expectations: **[CONTRIBUTING.md](CONTRIBUTING.md)**.
+
+---
 
 ## License
 
-This project is licensed under the Apache 2.0 License – see the LICENSE file for details.
+**Apache 2.0** — see [LICENSE](LICENSE).

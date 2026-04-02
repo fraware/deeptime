@@ -1,11 +1,9 @@
-streamlit
-pandas
-torch
-transformers
-plotly
-granite-tsfm @ git+https://github.com/ibm-granite/granite-tsfm.git
-fastapi
-uvicorn[standard]
-IPython
-matplotlib
-scipy
+# Runtime dependencies; granite-tsfm is pinned to a Git revision for reproducibility.
+streamlit>=1.28
+pandas>=2.0
+torch>=2.2
+transformers>=4.40
+plotly>=5.18
+matplotlib>=3.8
+scipy>=1.11
+granite-tsfm @ git+https://github.com/ibm-granite/granite-tsfm.git@e6774c09a6e99ec47b5acadba114b07f08d7f5e2

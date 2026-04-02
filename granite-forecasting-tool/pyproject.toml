@@ -1,0 +1,43 @@
+[build-system]
+requires = ["setuptools>=61", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "granite-forecasting-tool"
+version = "0.2.0"
+description = "Streamlit dashboard for IBM Granite time-series (TTM) forecasting"
+requires-python = ">=3.11"
+license = { text = "Apache-2.0" }
+dependencies = [
+    "streamlit>=1.28",
+    "pandas>=2.0",
+    "torch>=2.2",
+    "transformers>=4.40",
+    "plotly>=5.18",
+    "matplotlib>=3.8",
+    "scipy>=1.11",
+    "granite-tsfm @ git+https://github.com/ibm-granite/granite-tsfm.git@e6774c09a6e99ec47b5acadba114b07f08d7f5e2",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4",
+    "pytest-cov>=4.1",
+    "ruff>=0.4",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["granite_forecasting*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+src = [".", "granite_forecasting", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]

@@ -1,0 +1,13 @@
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.egg-info/
+dist/
+build/
+dashboard_outputs/
+granite-forecasting-tool/dashboard_outputs/
+granite-forecasting-tool/.streamlit/secrets.toml

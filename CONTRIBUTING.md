@@ -1,104 +1,133 @@
-# Contributing to Granite TimeSeries Forecasting Tool
+# Contributing to DeepTime
 
-Thank you for your interest in contributing to the Granite TimeSeries Forecasting Tool! We welcome your suggestions, bug reports, documentation improvements, and pull requests.
+Thank you for your interest in contributing. We welcome issues, documentation improvements, and pull requests.
 
-## Code of Conduct
+## Code of conduct
 
-This project adheres to the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). By participating in this project, you agree to abide by its terms.
+This project adheres to the [Contributor Covenant Code of Conduct](https://www.contributor-covenant.org/version/2/1/code_of_conduct/). By participating, you agree to abide by its terms.
 
-## How Can I Contribute?
+## Ways to contribute
 
-There are several ways you can contribute to the project:
+### Reporting bugs
 
-### Reporting Bugs
+Open a GitHub issue with:
 
-- **Open an Issue:** If you encounter any bugs or unexpected behavior, please open a new issue on GitHub. Be sure to include detailed information such as:
-  - Steps to reproduce the bug
-  - Expected behavior
-  - Screenshots or logs (if applicable)
-  - Your environment and system details
+- Steps to reproduce
+- Expected vs actual behavior
+- Logs or screenshots if helpful
+- OS, Python version, and whether you use Docker or local venv
 
-### Suggesting Enhancements
+### Suggesting enhancements
 
-- **Feature Requests:** If you have ideas for improvements or new features, please submit a feature request on GitHub. Provide as much detail as possible, including:
-  - A clear and descriptive title
-  - A detailed description of the feature
-  - Any examples or use cases
+Open an issue with a clear goal, proposed UX or API, and constraints (e.g. CPU-only, HF Spaces).
 
-### Pull Requests
+### Pull requests
 
-Pull requests are the preferred way to contribute code. When you are ready to submit a pull request, please follow these steps:
-
-1. **Fork the Repository:** Click the "Fork" button at the top right of the GitHub repository page to create your own copy of the project.
-2. **Clone Your Fork:** Clone your fork to your local machine:
-   ```bash
-   git clone https://github.com/your_username/granite-forecasting-tool.git
-   cd granite-forecasting-tool
-   ```
-3. **Create a Branch:** Create a new branch for your changes. Use a descriptive branch name that summarizes your changes:
-   ```bash
-   git checkout -b feature/your-feature-name
-   ```
-4. **Make Your Changes:** Implement your changes, making sure to adhere to the project's coding style and guidelines.
-5. **Commit Your Changes:** Write clear, concise commit messages that explain the changes. Follow these guidelines:
-   Use the imperative mood in the subject line (e.g., "Fix bug with data splitting").
-   Include a brief description of the change and why it was made.
+1. **Fork** the repository on GitHub and **clone your fork**:
 
    ```bash
-   git add .
-   git commit -m "Fix bug with data splitting in preprocessing"
+   git clone https://github.com/<your-username>/deeptime.git
+   cd deeptime
    ```
 
-6. **Push to Your Fork:** Push your changes to your fork on GitHub:
+2. Add `upstream` if you like:
 
    ```bash
-   git push origin feature/your-feature-name
-
+   git remote add upstream https://github.com/fraware/deeptime.git
    ```
 
-7. **Open a Pull Request:** Navigate to the original repository and click "New Pull Request." Select your branch and provide a detailed description of your changes.
+3. Create a focused branch: `feature/...`, `fix/...`, or `docs/...`.
 
-### Pull Request Guidelines
+4. Make changes; add or update **tests** under [`granite-forecasting-tool/tests/`](granite-forecasting-tool/tests/) when behavior changes.
 
-- **Descriptive Title and Description:** Clearly explain what your pull request does, why it is needed, and any relevant background information.
-- **Small, Focused Changes:** Try to keep your pull requests small and focused on a single issue or feature.
-- **Testing:** Ensure that your changes do not break existing functionality. Add tests if applicable.
-- **Documentation:** Update or add documentation as needed.
-- **Review Process:** Your pull request will be reviewed by maintainers. Be prepared to make changes based on feedback.
+5. Run **Ruff** and **pytest** locally (see below).
 
-### Development Setup
+6. Open a PR against `main` with a concise description; **CI** must pass (lint, tests, Docker build).
 
-To set up your local development environment:
+## Development setup
 
-1. Clone the repository:
+Requirements: **Python 3.11+**, **git** (for installing `granite-tsfm` from Git), enough disk for PyTorch and model caches.
 
-   ```bash
-   git clone https://github.com/your_username/granite-forecasting-tool.git
-   cd granite-forecasting-tool
+```bash
+cd granite-forecasting-tool
+python -m venv .venv
+source .venv/bin/activate          # Linux / macOS
+# .venv\Scripts\activate           # Windows
+pip install --upgrade pip
+pip install -e ".[dev]"
+```
 
-   ```
+The `[dev]` extra installs **Ruff**, **pytest**, and **pytest-cov** (see [`pyproject.toml`](granite-forecasting-tool/pyproject.toml)).
 
-2. Create and activate a virtual environment:
+**Alternative (runtime only):**
 
-   ```bash
-   python -m venv venv
-   source venv/bin/activate   # On Windows: venv\Scripts\activate
+```bash
+pip install -r requirements.txt
+```
 
-   ```
+Runtime dependencies and the **pinned `granite-tsfm` Git revision** are listed in [`requirements.txt`](granite-forecasting-tool/requirements.txt).
 
-3. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### Optional: stricter lockfiles
 
-### Code Style Guidelines
+For fully pinned transitive dependencies you can use **`uv`** (`uv lock`) or **`pip-tools`** (`pip-compile`) on a `requirements.in`; this repo currently relies on minimum versions in `pyproject.toml` plus a **fixed `granite-tsfm` commit**. Document any new lockfile in the PR.
 
-- **Python Style:** Follow PEP 8 guidelines for Python code.
-- **Commit Messages:** Use clear and descriptive commit messages.
-- **Documentation:** Ensure that your code is well-documented, including docstrings and inline comments where necessary.
+### Optional: pre-commit
 
-### Questions?
+From the **repository root** (not only `granite-forecasting-tool/`):
 
-If you have any questions, feel free to open an issue or contact one of the maintainers.
+```bash
+pip install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
 
-Thank you for helping improve the Granite TimeSeries Forecasting Tool!
+Hooks use Ruff with [`granite-forecasting-tool/pyproject.toml`](granite-forecasting-tool/pyproject.toml).
+
+## Checks before you push
+
+From **`granite-forecasting-tool/`**:
+
+```bash
+ruff check .
+pytest
+```
+
+**Coverage (optional):**
+
+```bash
+pytest --cov=granite_forecasting --cov-report=term-missing
+```
+
+## CI expectations
+
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml) runs on **Python 3.11 and 3.12**:
+
+1. `pip install -e ".[dev]"` from `granite-forecasting-tool/`
+2. `ruff check .`
+3. `pytest`
+4. `docker build -f granite-forecasting-tool/Dockerfile granite-forecasting-tool` from the repo root
+
+[Dependabot](.github/dependabot.yml) opens weekly PRs for GitHub Actions and pip dependencies under `granite-forecasting-tool/`.
+
+## Project structure (for contributors)
+
+| Area | Location |
+|------|----------|
+| Streamlit entry | [`granite-forecasting-tool/app.py`](granite-forecasting-tool/app.py) |
+| Package | [`granite-forecasting-tool/granite_forecasting/`](granite-forecasting-tool/granite_forecasting/) |
+| Tests | [`granite-forecasting-tool/tests/`](granite-forecasting-tool/tests/) |
+| Docker | [`granite-forecasting-tool/Dockerfile`](granite-forecasting-tool/Dockerfile), [`.dockerignore`](granite-forecasting-tool/.dockerignore) |
+| User docs | Root [`README.md`](README.md) |
+
+## Code style
+
+- Follow **PEP 8**; **Ruff** is the enforced linter (`E`, `F`, `I`, `W`, line length 100).
+- Prefer small, reviewable commits.
+- Use imperative commit subjects (e.g. `Fix M4 loader bounds check`).
+- Do **not** commit secrets. For local Streamlit secrets, copy [`granite-forecasting-tool/.streamlit/secrets.toml.example`](granite-forecasting-tool/.streamlit/secrets.toml.example) to `granite-forecasting-tool/.streamlit/secrets.toml` (that file is gitignored).
+
+## Questions
+
+Open an issue for discussion.
+
+Thank you for helping improve DeepTime.
